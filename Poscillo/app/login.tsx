@@ -84,48 +84,49 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
-  },
-  header: {
-    fontSize: 24,
-    marginBottom: 24,
-    color: "#000",
-  },
-  input: {
-    width: "80%",
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    color: "#000",
-    borderColor: "#000",
-  },
-  loginButton: {
-    width: "80%",
-    backgroundColor: "#9b59b6", // Color morado claro
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  buttonText: {
-    color: "#fff", // Texto blanco dentro del botón
-    fontSize: 16,
-  },
-  registerText: {
-    fontSize: 16,
-    color: "#000",
-    marginTop: 12,
-  },
-  errorText: {
-    color: "#ff4d4d",
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-});
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 16,
+      backgroundColor: "#fff",
+    },
+    header: {
+      fontSize: 24,
+      marginBottom: 24,
+      color: "#000",
+    },
+    input: {
+      width: "80%",
+      borderWidth: 1,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 16,
+      color: "#000",
+      borderColor: "#000",
+    },
+    loginButton: {
+      width: "80%",
+      backgroundColor: "rgb(247, 194, 88)", // Color actualizado
+      padding: 12,
+      borderRadius: 8,
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    buttonText: {
+      color: "#fff", // Texto blanco dentro del botón
+      fontSize: 16,
+    },
+    registerText: {
+      fontSize: 16,
+      color: "#000",
+      marginTop: 12,
+    },
+    errorText: {
+      color: "#ff4d4d",
+      fontSize: 14,
+      marginBottom: 16,
+      textAlign: "center",
+    },
+  });
+  

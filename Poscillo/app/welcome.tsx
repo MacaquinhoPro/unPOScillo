@@ -1,4 +1,3 @@
-// app/welcome.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
@@ -39,12 +38,11 @@ export default function WelcomeScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="rgb(247, 194, 88)" /> {/* Color actualizado */}
       </View>
     );
   }
 
-  // Opcionalmente, podrías mantener un mensaje breve si no se redirige automáticamente
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>Bienvenido al sistema POS</Text>

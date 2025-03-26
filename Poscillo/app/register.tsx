@@ -1,13 +1,19 @@
-// app/register.tsx
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../utils/firebaseconfig";
 import * as Haptics from "expo-haptics";
-// Importamos Firestore y el Picker
+import ActionSheet from "react-native-actionsheet"; // Usamos react-native-actionsheet
+// Importamos Firestore
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { Picker } from "@react-native-picker/picker";
+
+// Definir opciones para los roles de usuario
+const userRoles = [
+  { label: "Cliente", value: "cliente", image: require("../assets/images/cliente.png") },
+  { label: "Cocinero", value: "cocinero", image: require("../assets/images/cocinero.png") },
+  { label: "Caja", value: "caja", image: require("../assets/images/caja.png") },
+];
 
 const getFriendlyError = (error: any): string => {
   switch (error.code) {
@@ -29,6 +35,8 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [userRole, setUserRole] = useState("cliente"); // rol por defecto
   const [error, setError] = useState("");
+
+  const actionSheetRef = React.useRef<ActionSheet>(null); // Referencia al ActionSheet
 
   const handleRegister = async () => {
     if (Platform.OS !== "macos" && Platform.OS !== "windows") {
@@ -62,6 +70,18 @@ export default function RegisterScreen() {
     }
   };
 
+  // Función para abrir el ActionSheet
+  const openActionSheet = () => {
+    actionSheetRef.current?.show(); // Abre el ActionSheet utilizando la referencia
+  };
+
+  // Manejar la selección del ActionSheet
+  const handleActionSheetPress = (index: number) => {
+    if (index !== userRoles.length) { // Evitar seleccionar "Cancelar"
+      setUserRole(userRoles[index].value);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Registrarse</Text>
@@ -91,29 +111,23 @@ export default function RegisterScreen() {
         secureTextEntry
       />
 
-      {/* Combobox para seleccionar el tipo de usuario */}
+      {/* Botón que abre el ActionSheet para seleccionar el rol */}
       <Text style={styles.label}>Tipo de usuario</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={userRole}
-          onValueChange={(itemValue) => setUserRole(itemValue)}
-          style={styles.picker}
-        >
-          <Picker.Item label="Cliente" value="cliente" />
-          <Picker.Item label="Cocinero" value="cocinero" />
-          <Picker.Item label="Caja" value="caja" />
-        </Picker>
-      </View>
+      <TouchableOpacity style={styles.pickerContainer} onPress={openActionSheet}>
+        <Text style={styles.pickerText}>{userRoles.find((role) => role.value === userRole)?.label}</Text>
+      </TouchableOpacity>
+
+      {/* ActionSheet */}
+      <ActionSheet
+        ref={actionSheetRef} // Asignamos la referencia al ActionSheet
+        title="Selecciona un rol"
+        options={[...userRoles.map((item) => item.label), "Cancelar"]} // Opciones del ActionSheet
+        cancelButtonIndex={userRoles.length} // El último índice es el de "Cancelar"
+        onPress={handleActionSheetPress} // Callback cuando se presiona una opción
+      />
 
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
         <Text style={styles.buttonText}>Registrar</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.push("/login")}
-      >
-        <Text style={styles.backButtonText}>Volver a Iniciar Sesión</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("/login")}>
@@ -156,23 +170,17 @@ const styles = StyleSheet.create({
     borderColor: "#000",
     borderRadius: 8,
     marginBottom: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 12,
   },
-  picker: {
-    width: "100%",
-    height: 50,
+  pickerText: {
+    fontSize: 16,
     color: "#000",
   },
   registerButton: {
     width: "80%",
-    backgroundColor: "#9b59b6",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  backButton: {
-    width: "80%",
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "rgb(247, 194, 88)",
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
@@ -180,10 +188,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
-  },
-  backButtonText: {
-    color: "#000",
     fontSize: 16,
   },
   loginText: {

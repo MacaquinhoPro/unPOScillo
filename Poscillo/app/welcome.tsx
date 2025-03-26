@@ -1,30 +1,53 @@
 // app/welcome.tsx
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { auth } from "../utils/firebaseconfig";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth); // Cierra la sesión en Firebase
-      router.replace("/login"); // Redirige al usuario a la pantalla de Login
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    }
-  };
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (auth.currentUser) {
+        const uid = auth.currentUser.uid;
+        const db = getFirestore(auth.app);
+        const userDoc = await getDoc(doc(db, "users", uid));
+        if (userDoc.exists()) {
+          const { role } = userDoc.data();
+          // Redirigir según el rol
+          if (role === "cliente") {
+            router.replace("/cliente");
+          } else if (role === "cocinero") {
+            router.replace("/cocinero");
+          } else if (role === "caja") {
+            router.replace("/caja");
+          } else {
+            router.replace("/login"); // En caso de rol desconocido
+          }
+        }
+      }
+      setLoading(false);
+    };
 
+    fetchUserRole();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007bff" />
+      </View>
+    );
+  }
+
+  // Opcionalmente, podrías mantener un mensaje breve si no se redirige automáticamente
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>Bienvenido al sistema POS</Text>
-
-      {/* Botón de Logout */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Cerrar sesión</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -41,17 +64,5 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: "#000",
     marginBottom: 24,
-  },
-  logoutButton: {
-    width: "80%",
-    backgroundColor: "#e74c3c", // Color rojo para el botón de logout
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  buttonText: {
-    color: "#fff", // Texto blanco dentro del botón
-    fontSize: 16,
   },
 });

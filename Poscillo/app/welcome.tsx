@@ -19,13 +19,15 @@ export default function WelcomeScreen() {
           const { role } = userDoc.data();
           // Redirigir según el rol
           if (role === "cliente") {
-            router.replace("/cliente");
+            router.replace("/cliente"); 
           } else if (role === "cocinero") {
             router.replace("/cocinero");
           } else if (role === "caja") {
-            router.replace("/caja");
+            // Redirige a la carpeta "caja"
+            router.replace("/caja/menu");
           } else {
-            router.replace("/login"); // En caso de rol desconocido
+            // En caso de rol desconocido
+            router.replace("/login");
           }
         }
       }
@@ -38,11 +40,12 @@ export default function WelcomeScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="rgb(247, 194, 88)" /> {/* Color actualizado */}
+        <ActivityIndicator size="large" color="#007bff" />
       </View>
     );
   }
 
+  // Muestra algo temporal si no se ha redirigido.
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>Bienvenido al sistema POS</Text>
@@ -52,15 +55,7 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
+    flex: 1, justifyContent: "center", alignItems: "center", padding: 16, backgroundColor: "#fff",
   },
-  welcomeText: {
-    fontSize: 24,
-    color: "#000",
-    marginBottom: 24,
-  },
+  welcomeText: { fontSize: 24, color: "#000", marginBottom: 24 },
 });

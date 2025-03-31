@@ -51,6 +51,13 @@ function AppLayout() {
     >
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
+      <Stack.Screen name="welcome" />
+      <Stack.Screen name="menu" />
+      <Stack.Screen name="cliente" />
+      <Stack.Screen name="cocinero" />
+      <Stack.Screen name="caja" />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="pagar" />
     </Stack>
   );
 }

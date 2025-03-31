@@ -1,4 +1,3 @@
-// app/menu.tsx
 import React, { useState } from "react";
 import { 
   View, 
@@ -12,15 +11,15 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 
-// Tipos de dato para un plato (puedes ajustarlo según tus campos reales)
 type Dish = {
   id: string;
-  image: string;        // URL de la imagen (o base64)
+  image: string;
   title: string;
   description: string;
   price: number;
-  cookTime: string;     // Tiempo de cocción
+  cookTime: string;
 };
 
 type MenuScreenProps = {
@@ -29,8 +28,9 @@ type MenuScreenProps = {
 
 export default function MenuScreen({ role }: MenuScreenProps) {
   const router = useRouter();
+  const [facing, setFacing] = useState<CameraType>('back');
+  const [permission, requestPermission] = useCameraPermissions();
 
-  // Estado que contiene la lista de platos
   const [dishes, setDishes] = useState<Dish[]>([
     {
       id: "1",
@@ -50,7 +50,6 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     },
   ]);
 
-  // Estado para manejar la creación de un nuevo plato
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -58,27 +57,43 @@ export default function MenuScreen({ role }: MenuScreenProps) {
   const [newCookTime, setNewCookTime] = useState("");
   const [newImage, setNewImage] = useState<string>("");
 
-  // Abre la cámara o la galería para seleccionar una imagen
   const handlePickImage = async () => {
     try {
-      // Pides permisos de cámara o galería
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permiso denegado", "No se concedió acceso a la galería.");
         return;
       }
 
-      // Abres la galería (o la cámara si deseas con launchCameraAsync)
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.7,
-      });
-
-      if (!result.canceled && result.assets?.length) {
-        // Almacenas la URL o base64 que devuelva
-        setNewImage(result.assets[0].uri);
-      }
+      // Crear una opción para elegir entre cámara o galería
+      Alert.alert("Seleccionar Imagen", "¿De dónde deseas obtener la imagen?", [
+        {
+          text: "Cámara",
+          onPress: async () => {
+            const result = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              quality: 0.7,
+            });
+            if (!result.canceled && result.assets?.length) {
+              setNewImage(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: "Galería",
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.7,
+            });
+            if (!result.canceled && result.assets?.length) {
+              setNewImage(result.assets[0].uri);
+            }
+          },
+        },
+        { text: "Cancelar", style: "cancel" },
+      ]);
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "No se pudo acceder a la galería/cámara.");
@@ -101,7 +116,6 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     };
 
     setDishes([...dishes, newDish]);
-    // Limpias el formulario
     setNewImage("");
     setNewTitle("");
     setNewDescription("");
@@ -127,10 +141,8 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     );
   };
 
-  // Renderiza cada plato en la lista
   const renderItem = ({ item }: { item: Dish }) => (
     <View style={styles.dishItem}>
-      {/* Muestra la imagen si existe */}
       {item.image ? (
         <Image source={{ uri: item.image }} style={styles.dishImage} />
       ) : (
@@ -145,7 +157,6 @@ export default function MenuScreen({ role }: MenuScreenProps) {
         <Text style={styles.dishDetail}>Precio: ${item.price}</Text>
         <Text style={styles.dishDetail}>Tiempo: {item.cookTime}</Text>
       </View>
-      {/* Botón de eliminar solo si el rol es "caja" */}
       {role === "caja" && (
         <TouchableOpacity
           style={styles.deleteButton}
@@ -157,7 +168,6 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     </View>
   );
 
-  // Si es cliente, mostramos directamente la lista
   if (role === "cliente") {
     return (
       <View style={styles.container}>
@@ -174,7 +184,6 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     );
   }
 
-  // Si es caja, se muestra la lista y un botón para agregar platos
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Menú (Caja)</Text>
@@ -255,7 +264,6 @@ export default function MenuScreen({ role }: MenuScreenProps) {
   );
 }
 
-// Estilos básicos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -318,7 +326,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   addButton: {
-    backgroundColor: "#9b59b6",
+    backgroundColor: "rgb(247, 194, 88)",  // Color actualizado
     padding: 12,
     borderRadius: 8,
     alignItems: "center",

@@ -1,20 +1,16 @@
-// app/caja/_layout.tsx
+// app/cliente/_layout.tsx
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from '@expo/vector-icons'; // Asegúrate de tener esta dependencia instalada
 
-export default function CajaLayout() {
+export default function ClienteLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // oculta el header nativo
+        headerShown: false, // Oculta el header nativo
       }}
     >
-      {/*
-        Tab de "menu".
-        - routeName: "menu"
-        - Se mostrará con el título "Menú" en la barra
-      */}
+      {/* Tab de "Menú" */}
       <Tabs.Screen
         name="menu"
         options={{
@@ -25,26 +21,18 @@ export default function CajaLayout() {
         }}
       />
 
-      {/*
-        Tab de "pagar".
-        - routeName: "pagar"
-        - Se mostrará con el título "Pagar" en la barra
-      */}
+      {/* Tab de "Pagar" */}
       <Tabs.Screen
         name="pagar"
         options={{
           title: "Pagar",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cash-outline" color={color} size={size} />
+            <Ionicons name="cart-outline" color={color} size={size} />
           ),
         }}
       />
 
-      {/*
-        Tab de "cerrar sesión".
-        - routeName: "logout"
-        - Se mostrará con el título "Cerrar Sesión" en la barra
-      */}
+      {/* Tab de "Cerrar Sesión" */}
       <Tabs.Screen
         name="logout"
         options={{

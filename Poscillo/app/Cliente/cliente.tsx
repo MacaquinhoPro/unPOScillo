@@ -1,7 +1,7 @@
 // app/cliente.tsx
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import MenuScreen from "./caja/menu";
+import MenuScreen from "../caja/menu";
 
 export default function ClienteScreen() {
   return (

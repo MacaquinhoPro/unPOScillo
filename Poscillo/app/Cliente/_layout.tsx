@@ -15,7 +15,7 @@ export default function ClienteLayout() {
         name="menu"
         options={{
           title: "Menú",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="restaurant-outline" color={color} size={size} />
           ),
         }}
@@ -26,7 +26,7 @@ export default function ClienteLayout() {
         name="pagar"
         options={{
           title: "Pagar",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="cart-outline" color={color} size={size} />
           ),
         }}
@@ -37,7 +37,7 @@ export default function ClienteLayout() {
         name="logout"
         options={{
           title: "Cerrar Sesión",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon:({ color, size }: { color: string; size: number }) => (
             <Ionicons name="exit-outline" color={color} size={size} />
           ),
         }}

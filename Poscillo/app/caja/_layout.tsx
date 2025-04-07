@@ -19,7 +19,7 @@ export default function CajaLayout() {
         name="menu"
         options={{
           title: "Menú",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="restaurant-outline" color={color} size={size} />
           ),
         }}
@@ -34,7 +34,7 @@ export default function CajaLayout() {
         name="pagar"
         options={{
           title: "Pagar",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="cash-outline" color={color} size={size} />
           ),
         }}
@@ -49,7 +49,7 @@ export default function CajaLayout() {
         name="logout"
         options={{
           title: "Cerrar Sesión",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="exit-outline" color={color} size={size} />
           ),
         }}

@@ -12,17 +12,35 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import { db, auth } from "../../utils/firebaseconfig"; // Asegúrate de que la ruta sea correcta
-import { collection, doc, setDoc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import { CameraType, useCameraPermissions } from "expo-camera";
 
+// Importar Firebase (asegúrate de exportar storage desde tu firebaseconfig)
+import { db, auth, storage } from "../../utils/firebaseconfig";
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  arrayUnion,
+  setDoc,
+  getDoc
+} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+// Tipo de cada plato
 type Dish = {
   id: string;
-  image: any; // Cambiado a any para aceptar el objeto de require()
+  image: any;       // Se mantiene "any" para no romper la lógica actual (el cliente usa `item.image`)
   title: string;
   description: string;
   price: number;
   cookTime: string;
+  quantity?: number; // cuando se agrega al carrito
 };
 
 type MenuScreenProps = {
@@ -34,71 +52,53 @@ export default function MenuScreen({ role }: MenuScreenProps) {
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
 
-  const [dishes, setDishes] = useState<Dish[]>([
-    {
-      id: "1",
-      image: require("../../assets/images/Hamburguesa.png"), // Ajusta la ruta si tu estructura de carpetas es diferente
-      title: "Hamburguesa",
-      description: "Carne, queso, lechuga y tomate",
-      price: 10,
-      cookTime: "10 min",
-    },
-    {
-      id: "2",
-      image: require("../../assets/images/pizza.png"), // Ajusta la ruta si tu estructura de carpetas es diferente
-      title: "Pizza",
-      description: "Salsa de tomate y queso mozzarella",
-      price: 12,
-      cookTime: "15 min",
-    },
-    {
-      id: "3",
-      image: require("../../assets/images/sushi.png"), // Ajusta la ruta si tu estructura de carpetas es diferente
-      title: "Sushi",
-      description: "Variedad de sushi fresco",
-      price: 15,
-      cookTime: "20 min",
-    },
-    {
-      id: "4",
-      image: require("../../assets/images/tacos.png"), // Ajusta la ruta si tu estructura de carpetas es diferente
-      title: "Tacos",
-      description: "Tortillas de maíz con carne y salsa",
-      price: 8,
-      cookTime: "12 min",
-    },
-    {
-      id: "5",
-      image: require("../../assets/images/Ensalada.png"), // Ajusta la ruta si tu estructura de carpetas es diferente
-      title: "Ensalada",
-      description: "Mezcla de verduras frescas",
-      price: 7,
-      cookTime: "5 min",
-    },
-    {
-      id: "6",
-      image: require("../../assets/images/pasta.png"), // Ajusta la ruta si tu estructura de carpetas es diferente
-      title: "Pasta",
-      description: "Pasta con salsa boloñesa",
-      price: 11,
-      cookTime: "18 min",
-    },
-  ]);
+  // Estado para guardar la lista de platos
+  const [dishes, setDishes] = useState<Dish[]>([]);
 
+  // Control formulario crear/editar
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newCookTime, setNewCookTime] = useState("");
-  const [newImage, setNewImage] = useState<string>("");
+  const [newImage, setNewImage] = useState<string>(""); // URI local de la nueva imagen
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
-  const [purchaseItems, setPurchaseItems] = useState<Dish[]>([]);
 
-  // Estados para la ventana emergente de detalles del plato
+  // Estados para el modal del plato (cliente)
   const [isDishModalVisible, setDishModalVisible] = useState(false);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
-  const [quantity, setQuantity] = useState(1); // Estado para la cantidad
+  const [quantity, setQuantity] = useState(1);
 
+  // ====== 1) CARGAR PLATOS DE FIRESTORE AL MONTAR =======
+  useEffect(() => {
+    const dishesRef = collection(db, "dishes");
+    const q = query(dishesRef, orderBy("createdAt", "desc"));
+
+    // onSnapshot para escuchar en tiempo real
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loadedDishes: Dish[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as any;
+        return {
+          id: docSnap.id,
+          // Convertimos la URL en { uri: ... } para que la parte "cliente" use `item.image`.
+          // Si no hay imageURL, mostramos un require de "Sin imagen" (o un placeholder).
+          image: data.imageURL
+            ? { uri: data.imageURL }
+            : require("../../assets/images/Ensalada.png"), 
+            // Ajusta si quieres un placeholder local
+          title: data.title,
+          description: data.description,
+          price: data.price,
+          cookTime: data.cookTime,
+        };
+      });
+      setDishes(loadedDishes);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ======= 2) MANEJAR SELECCIÓN DE IMAGEN (CÁMARA/GALERÍA) =======
   const handlePickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -141,47 +141,65 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     }
   };
 
-  const handleAddDish = () => {
+  // ======= 3) CREAR O EDITAR PLATO EN FIRESTORE =======
+  const handleAddDish = async () => {
     if (!newTitle.trim() || !newPrice.trim() || !newCookTime.trim()) {
       Alert.alert("Campos incompletos", "Todos los campos son obligatorios.");
       return;
     }
 
-    if (editingDish) {
-      const updatedDishes = dishes.map((dish) =>
-        dish.id === editingDish.id
-          ? {
-              ...dish,
-              image: newImage || dish.image, // Conserva la imagen anterior si no se seleccionó una nueva
-              title: newTitle,
-              description: newDescription,
-              price: parseFloat(newPrice),
-              cookTime: newCookTime,
-            }
-          : dish
-      );
-      setDishes(updatedDishes);
-      setEditingDish(null);
-    } else {
-      const newDish: Dish = {
-        id: Date.now().toString(),
-        image: newImage,
-        title: newTitle,
-        description: newDescription,
-        price: parseFloat(newPrice),
-        cookTime: newCookTime,
-      };
-      setDishes([...dishes, newDish]);
-    }
+    try {
+      let imageURL = "";
 
-    setNewImage("");
-    setNewTitle("");
-    setNewDescription("");
-    setNewPrice("");
-    setNewCookTime("");
-    setShowAddForm(false);
+      // Si el usuario seleccionó una nueva imagen, la subimos a Storage
+      if (newImage) {
+        const fileRef = ref(storage, `dishImages/${Date.now()}`);
+        const resp = await fetch(newImage);
+        const blob = await resp.blob();
+        await uploadBytes(fileRef, blob);
+        imageURL = await getDownloadURL(fileRef);
+      }
+
+      if (editingDish) {
+        // EDICIÓN: Actualizar doc en Firestore
+        const dishDocRef = doc(db, "dishes", editingDish.id);
+        await updateDoc(dishDocRef, {
+          title: newTitle,
+          description: newDescription,
+          price: parseFloat(newPrice),
+          cookTime: newCookTime,
+          // Si hay imagen nueva, la guardamos, si no, no tocamos imageURL
+          ...(imageURL ? { imageURL } : {}),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        // CREACIÓN: Nuevo doc en Firestore
+        await addDoc(collection(db, "dishes"), {
+          title: newTitle,
+          description: newDescription,
+          price: parseFloat(newPrice),
+          cookTime: newCookTime,
+          imageURL: imageURL,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      // Limpiar formulario
+      setNewImage("");
+      setNewTitle("");
+      setNewDescription("");
+      setNewPrice("");
+      setNewCookTime("");
+      setEditingDish(null);
+      setShowAddForm(false);
+    } catch (error) {
+      console.error("Error al guardar plato en Firestore:", error);
+      Alert.alert("Error", "No se pudo guardar el plato. Revisa la consola.");
+    }
   };
 
+  // ======= 4) ELIMINAR PLATO =======
   const handleDeleteDish = (id: string) => {
     Alert.alert(
       "Eliminar plato",
@@ -191,29 +209,37 @@ export default function MenuScreen({ role }: MenuScreenProps) {
         {
           text: "Eliminar",
           style: "destructive",
-          onPress: () => {
-            setDishes(dishes.filter((dish) => dish.id !== id));
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "dishes", id));
+            } catch (err) {
+              console.error("Error eliminando plato:", err);
+              Alert.alert("Error", "No se pudo eliminar el plato.");
+            }
           },
         },
       ]
     );
   };
 
+  // ======= 5) PREPARAR EDICIÓN (CARGAR DATOS) =======
   const handleEditDish = (dish: Dish) => {
     setShowAddForm(true);
     setEditingDish(dish);
-    // Si la imagen original era un objeto de require(), no intentes asignarlo directamente a newImage (que espera una URI)
-    // En este caso, al editar, la imagen existente se mantendrá hasta que se seleccione una nueva.
     setNewTitle(dish.title);
     setNewDescription(dish.description);
     setNewPrice(dish.price.toString());
     setNewCookTime(dish.cookTime);
+    // Si la imagen venía de Firestore, dish.image es { uri: ... }, 
+    // no la asignamos a newImage a menos que vayamos a cambiarla.
+    setNewImage("");
   };
 
+  // ======= 6) MOSTRAR MODAL (CLIENTE) Y AGREGAR AL CARRITO =======
   const openDishModal = (dish: Dish) => {
     setSelectedDish(dish);
     setDishModalVisible(true);
-    setQuantity(1); // Resetear la cantidad al abrir el modal
+    setQuantity(1);
   };
 
   const closeDishModal = () => {
@@ -221,41 +247,48 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     setSelectedDish(null);
   };
 
-  const incrementQuantity = () => {
-    setQuantity(quantity + 1);
-  };
-
+  const incrementQuantity = () => setQuantity((q) => q + 1);
   const decrementQuantity = () => {
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
+    if (quantity > 1) setQuantity((q) => q - 1);
   };
 
+  // Agregar al carrito → colecc "orders"
   const handleAddToCartFromModal = async () => {
     if (selectedDish && auth.currentUser) {
       const userId = auth.currentUser.uid;
       const quantityToAdd = quantity;
-      const itemToAdd = { ...selectedDish, quantity: quantityToAdd }; // Incluye la cantidad en el item
+
+      // En tu código original, "image" es un require(...) o { uri: ... }. 
+      // Para guardar en el pedido, no hace falta todo el "image", 
+      // salvo que quieras la URL para luego mostrarlo en el carrito.
+      const itemToAdd = {
+        id: selectedDish.id,
+        title: selectedDish.title,
+        description: selectedDish.description,
+        price: selectedDish.price,
+        cookTime: selectedDish.cookTime,
+        quantity: quantityToAdd,
+        // Si deseas, también la url:
+        // imageURL: selectedDish.image?.uri ?? null
+      };
 
       try {
         const ordersCollectionRef = collection(db, "orders");
-        const orderDocRef = doc(ordersCollectionRef, userId); // Usamos el UID del cliente como ID del documento para facilitar la consulta
-
-        // Verificamos si ya existe un pedido pendiente para este usuario
+        const orderDocRef = doc(ordersCollectionRef, userId);
         const orderDocSnap = await getDoc(orderDocRef);
 
         if (orderDocSnap.exists()) {
-          // Si existe, actualizamos el array de items
+          // Ya existe pedido: actualizamos array
           await updateDoc(orderDocRef, {
             items: arrayUnion(itemToAdd),
             updatedAt: new Date(),
           });
         } else {
-          // Si no existe, creamos un nuevo documento de pedido
+          // Crear nuevo doc de pedido
           await setDoc(orderDocRef, {
             userId: userId,
             items: [itemToAdd],
-            status: "pending", // Estado inicial del pedido
+            status: "pending",
             createdAt: new Date(),
           });
         }
@@ -267,21 +300,27 @@ export default function MenuScreen({ role }: MenuScreenProps) {
         closeDishModal();
       } catch (error) {
         console.error("Error al guardar el pedido en Firestore:", error);
-        Alert.alert("Error", "No se pudo añadir el producto al carrito. Inténtalo de nuevo.");
+        Alert.alert(
+          "Error",
+          "No se pudo añadir el producto al carrito. Inténtalo de nuevo."
+        );
       }
     } else {
       Alert.alert("Error", "Debes iniciar sesión para agregar productos al carrito.");
     }
   };
 
+  // ======= 7) RENDERIZAR CADA PLATO EN PANTALLA (FLATLIST) =======
   const renderItem = ({ item }: { item: Dish }) => (
     <TouchableOpacity
       style={styles.gridItem}
       onPress={() => {
-        openDishModal(item); // Abrir la ventana emergente al hacer clic para ambos roles
+        // En ambos roles abrimos el modal; si estás en "caja", igual verás la vista previa
+        openDishModal(item);
       }}
     >
       {item.image ? (
+        // item.image puede ser { uri: ... } o un require(...) (placeholder)
         <Image source={item.image} style={styles.gridItemImage} />
       ) : (
         <View style={[styles.gridItemImage, styles.dishPlaceholder]}>
@@ -290,8 +329,11 @@ export default function MenuScreen({ role }: MenuScreenProps) {
       )}
       <View style={styles.gridItemInfo}>
         <Text style={styles.gridItemTitle}>{item.title}</Text>
-        <Text style={styles.gridItemDetail}>${item.price} - {item.cookTime}</Text>
+        <Text style={styles.gridItemDetail}>
+          ${item.price} - {item.cookTime}
+        </Text>
       </View>
+
       {role === "caja" && (
         <View style={styles.gridItemActions}>
           <TouchableOpacity
@@ -311,9 +353,10 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     </TouchableOpacity>
   );
 
+  // ======= 8) SI ROLE = CLIENTE =======
   if (role === "cliente") {
     return (
-      <View style={[styles.container, { paddingTop: 60 }]}> {/* Añadido paddingTop */}
+      <View style={[styles.container, { paddingTop: 60 }]}>
         <Text style={styles.header}>Menú</Text>
         <FlatList
           data={dishes}
@@ -325,6 +368,7 @@ export default function MenuScreen({ role }: MenuScreenProps) {
           }
         />
 
+        {/* Modal para ver detalles y añadir al carrito */}
         <Modal
           animationType="slide"
           transparent={true}
@@ -350,18 +394,29 @@ export default function MenuScreen({ role }: MenuScreenProps) {
                   )}
                   <Text style={styles.modalTitle}>{selectedDish.title}</Text>
                   <Text style={styles.modalPrice}>${selectedDish.price}</Text>
-                  <Text style={styles.modalDescription}>{selectedDish.description}</Text>
+                  <Text style={styles.modalDescription}>
+                    {selectedDish.description}
+                  </Text>
 
                   <View style={styles.quantityContainer}>
-                    <TouchableOpacity style={styles.quantityButton} onPress={decrementQuantity}>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={decrementQuantity}
+                    >
                       <Text style={styles.quantityButtonText}>-</Text>
                     </TouchableOpacity>
                     <Text style={styles.quantityText}>{quantity}</Text>
-                    <TouchableOpacity style={styles.quantityButton} onPress={incrementQuantity}>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={incrementQuantity}
+                    >
                       <Text style={styles.quantityButtonText}>+</Text>
                     </TouchableOpacity>
                   </View>
-                  <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCartFromModal}>
+                  <TouchableOpacity
+                    style={styles.addToCartButton}
+                    onPress={handleAddToCartFromModal}
+                  >
                     <Text style={styles.addToCartButtonText}>
                       Agregar - ${selectedDish.price * quantity}
                     </Text>
@@ -375,9 +430,11 @@ export default function MenuScreen({ role }: MenuScreenProps) {
     );
   }
 
+  // ======= 9) SI ROLE = CAJA =======
   return (
-    <View style={[styles.container, { paddingTop: 60 }]}> {/* Añadido paddingTop */}
+    <View style={[styles.container, { paddingTop: 60 }]}>
       <Text style={styles.header}>Menú (Caja)</Text>
+
       {!showAddForm && (
         <TouchableOpacity
           style={styles.addButton}
@@ -467,26 +524,27 @@ export default function MenuScreen({ role }: MenuScreenProps) {
   );
 }
 
+// ======= ESTILOS (idénticos a tu código) =======
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f4f4f4", // Un fondo gris claro
+    backgroundColor: "#f4f4f4", 
     padding: 16,
   },
   header: {
-    fontSize: 24, // Aumentar el tamaño del header
+    fontSize: 24,
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
-    color: "#333", // Color de texto más oscuro
+    color: "#333",
   },
   gridItem: {
     flex: 1,
     margin: 8,
-    borderRadius: 12, // Bordes más redondeados
+    borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#fff", // Fondo blanco para cada item
-    elevation: 5, // Sombra más pronunciada para Android
+    backgroundColor: "#fff",
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -494,7 +552,7 @@ const styles = StyleSheet.create({
   },
   gridItemImage: {
     width: "100%",
-    height: 150, // Aumentar la altura de la imagen
+    height: 150,
     resizeMode: "cover",
   },
   dishPlaceholder: {
@@ -510,27 +568,39 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   gridItemTitle: {
-    fontSize: 18, // Aumentar tamaño del título
+    fontSize: 18,
     fontWeight: "bold",
     marginBottom: 6,
     textAlign: "center",
     color: "#333",
   },
   gridItemDetail: {
-    fontSize: 16, // Aumentar tamaño del detalle
+    fontSize: 16,
     color: "#666",
     textAlign: "center",
   },
-  deleteButton: {
-    backgroundColor: "#e74c3c",
+  gridItemActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 10,
+  },
+  actionButton: {
     padding: 10,
+    borderRadius: 6,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 6,
+    minWidth: 70,
   },
-  deleteButtonText: {
+  actionButtonText: {
     color: "#fff",
     fontSize: 14,
+    textAlign: "center",
+  },
+  editButton: {
+    backgroundColor: "#f39c12",
+  },
+  deleteButton: {
+    backgroundColor: "#e74c3c",
   },
   addButton: {
     backgroundColor: "rgb(247, 194, 88)",
@@ -549,7 +619,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     marginBottom: 20,
-    backgroundColor: "#fff", // Fondo blanco para el formulario
+    backgroundColor: "#fff",
     elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -557,7 +627,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   imagePicker: {
-    height: 150, // Aumentar altura del selector de imagen
+    height: 150,
     borderWidth: 1,
     borderColor: "#999",
     borderRadius: 10,
@@ -583,7 +653,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: "#000",
     fontSize: 16,
-    backgroundColor: "#f9f9f9", // Fondo ligero para los inputs
+    backgroundColor: "#f9f9f9",
   },
   formButtons: {
     flexDirection: "row",
@@ -620,49 +690,6 @@ const styles = StyleSheet.create({
     color: "#777",
     fontSize: 16,
   },
-  gridItemActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 10,
-  },
-  actionButton: {
-    padding: 10,
-    borderRadius: 6,
-    justifyContent: "center",
-    alignItems: "center",
-    minWidth: 70,
-  },
-  actionButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  editButton: {
-    backgroundColor: "#f39c12",
-  },
-  addButtonToPurchaseGrid: {
-    backgroundColor: "#27ae60",
-    padding: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 6,
-    margin: 10,
-  },
-  addButtonToPurchaseText: {
-    color: "#fff",
-    fontSize: 16,
-  },
-  viewPurchaseButton: {
-    backgroundColor: "rgb(52, 152, 219)",
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  viewPurchaseButtonText: {
-    color: "#fff",
-    fontSize: 18,
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
@@ -693,21 +720,21 @@ const styles = StyleSheet.create({
     color: "#555",
   },
   modalImage: {
-    width: 180, // Aumentar tamaño de la imagen en el modal
+    width: 180,
     height: 180,
     resizeMode: "cover",
     borderRadius: 10,
     marginBottom: 15,
   },
   modalTitle: {
-    fontSize: 22, // Aumentar tamaño del título en el modal
+    fontSize: 22,
     fontWeight: "bold",
     marginBottom: 10,
     textAlign: "center",
     color: "#333",
   },
   modalPrice: {
-    fontSize: 20, // Aumentar tamaño del precio en el modal
+    fontSize: 20,
     color: "green",
     marginBottom: 15,
   },

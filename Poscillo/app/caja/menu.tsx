@@ -285,10 +285,10 @@ export default function MenuScreen({ role }: MenuScreenProps) {
           });
         } else {
           // Crear nuevo doc de pedido
-          await setDoc(orderDocRef, {
+          await setDoc(orderDocRef, { 
             userId: userId,
             items: [itemToAdd],
-            status: "pending",
+            status: "cart",
             createdAt: new Date(),
           });
         }

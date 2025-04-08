@@ -1,43 +1,61 @@
-// app/cliente/_layout.tsx
+// app/Cliente/_layout.tsx
 import React from "react";
 import { Tabs } from "expo-router";
-import { Ionicons } from '@expo/vector-icons'; // Asegúrate de tener esta dependencia instalada
+import { Ionicons } from "@expo/vector-icons";
 
 export default function ClienteLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // Oculta el header nativo
+        headerShown: false,
       }}
     >
-      {/* Tab de "Menú" */}
       <Tabs.Screen
-        name="menu"
+        name="cliente"
         options={{
           title: "Menú",
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+          tabBarIcon: ({ color, size }) => (
             <Ionicons name="restaurant-outline" color={color} size={size} />
           ),
         }}
       />
 
-      {/* Tab de "Pagar" */}
+      {/* Nueva pestaña para ver el estado del pedido */}
       <Tabs.Screen
-        name="pagar"
+        name="pedidoStatus"
         options={{
-          title: "Pagar",
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Ionicons name="cart-outline" color={color} size={size} />
+          title: "Estado Pedido",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="timer-outline" color={color} size={size} />
           ),
         }}
       />
 
-      {/* Tab de "Cerrar Sesión" */}
+      <Tabs.Screen
+        name="Carrito"
+        options={{
+          title: "Carrito",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="timer-outline" color={color} size={size} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="pagar"
+        options={{
+          title: "Pagar",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cash-outline" color={color} size={size} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="logout"
         options={{
           title: "Cerrar Sesión",
-          tabBarIcon:({ color, size }: { color: string; size: number }) => (
+          tabBarIcon: ({ color, size }) => (
             <Ionicons name="exit-outline" color={color} size={size} />
           ),
         }}

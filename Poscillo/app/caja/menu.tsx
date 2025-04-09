@@ -31,6 +31,7 @@ import {
   getDoc
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Tipo de cada plato
 type Dish = {
@@ -256,6 +257,7 @@ export default function MenuScreen({ role }: MenuScreenProps) {
   const handleAddToCartFromModal = async () => {
     if (selectedDish && auth.currentUser) {
       const userId = auth.currentUser.uid;
+      const tableId = await AsyncStorage.getItem("userId");
       const quantityToAdd = quantity;
 
       // En tu código original, "image" es un require(...) o { uri: ... }. 
@@ -287,6 +289,7 @@ export default function MenuScreen({ role }: MenuScreenProps) {
           // Crear nuevo doc de pedido
           await setDoc(orderDocRef, { 
             userId: userId,
+            tableId: tableId ?? "Mesa desconocida",
             items: [itemToAdd],
             status: "cart",
             createdAt: new Date(),

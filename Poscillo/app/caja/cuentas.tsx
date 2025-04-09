@@ -1,4 +1,3 @@
-// app/caja/cuentas.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -25,6 +24,7 @@ type Order = {
   userId: string;       // O mesa, si así lo manejas
   status: string;
   items: OrderItem[];
+  tableId: string;      // Nueva propiedad añadida
 };
 
 export default function CuentasScreen() {
@@ -45,6 +45,7 @@ export default function CuentasScreen() {
           userId: data.userId, // o data.mesa, según cómo lo guardes
           status: data.status,
           items: data.items || [],
+          tableId: data.tableId, // Añadido el campo tableId
         };
       });
       setOrders(loaded);
@@ -102,7 +103,7 @@ export default function CuentasScreen() {
       onPress={() => openOrderDetails(item)}
     >
       {/* En tu caso, "mesa" podría estar en userId, o un campo item.mesa */}
-      <Text style={styles.orderTitle}>Mesa/Usuario: {item.userId}</Text>
+      <Text style={styles.orderTitle}>Mesa: {item.tableId}</Text>
       <Text style={styles.orderSubtitle}>Estado: {item.status}</Text>
     </TouchableOpacity>
   );
@@ -133,7 +134,7 @@ export default function CuentasScreen() {
             {selectedOrder ? (
               <>
                 <Text style={styles.modalHeader}>
-                  Detalle de la Mesa/Usuario: {selectedOrder.userId}
+                  Detalle de la Mesa: {selectedOrder.tableId}
                 </Text>
                 {selectedOrder.items.length === 0 ? (
                   <Text style={styles.infoText}>No hay items</Text>

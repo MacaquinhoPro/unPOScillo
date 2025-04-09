@@ -1,4 +1,3 @@
-// app/cocinero.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from "react-native";
 import { db } from "./../../utils/firebaseconfig"; // Ajusta tu import de firebase
@@ -15,6 +14,7 @@ type Order = {
   id: string;
   userId: string;
   status: string;
+  tableId: string; // Added tableId
   items: {
     id: string;
     title: string;
@@ -84,8 +84,7 @@ export default function CocineroScreen() {
   // Render de cada pedido
   const renderItem = ({ item }: { item: Order }) => (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Pedido ID: {item.id}</Text>
-      <Text>Usuario/Mesa: {item.userId}</Text>
+      <Text style={styles.cardTitle}>Mesa: {item.tableId}</Text> {/* Updated line */}
       <Text>Estado: {item.status}</Text>
 
       <Text style={{ marginVertical: 8, fontWeight: "bold" }}>Productos:</Text>

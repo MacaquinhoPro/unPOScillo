@@ -1,20 +1,19 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../utils/firebaseconfig";
 import * as Haptics from "expo-haptics";
-import ActionSheet from "react-native-actionsheet"; // Usamos react-native-actionsheet
-// Importamos Firestore
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 
-// Definir opciones para los roles de usuario
-const userRoles = [
-  { label: "Cliente", value: "cliente", image: require("../assets/images/cliente.png") },
-  { label: "Cocinero", value: "cocinero", image: require("../assets/images/cocinero.png") },
-  { label: "Caja", value: "caja", image: require("../assets/images/caja.png") },
-];
-
+// Función para generar mensajes de error amigables
 const getFriendlyError = (error: any): string => {
   switch (error.code) {
     case "auth/email-already-in-use":
@@ -30,19 +29,25 @@ const getFriendlyError = (error: any): string => {
 
 export default function RegisterScreen() {
   const router = useRouter();
+
+  // Estados de selección inicial
+  // selectedType: null = sin seleccionar, "cliente" o "admin"
+  const [selectedType, setSelectedType] = useState<"cliente" | "admin" | null>(null);
+  // Para el flujo de administrador, almacenamos la clave y luego el rol admin elegido
+  const [adminKey, setAdminKey] = useState("");
+  const [adminRole, setAdminRole] = useState<"cocinero" | "caja" | null>(null);
+
+  // Estados del formulario de registro
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [userRole, setUserRole] = useState("cliente"); // rol por defecto
   const [error, setError] = useState("");
 
-  const actionSheetRef = React.useRef<ActionSheet>(null); // Referencia al ActionSheet
-
+  // Función para manejar el registro
   const handleRegister = async () => {
     if (Platform.OS !== "macos" && Platform.OS !== "windows") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-
     setError("");
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
@@ -50,42 +55,132 @@ export default function RegisterScreen() {
       setError("Por favor completa todos los campos.");
       return;
     }
+
+    // Determinar el rol final según lo seleccionado
+    const finalRole = selectedType === "cliente" ? "cliente" : adminRole;
+    if (!finalRole) {
+      setError("Error al determinar tu rol.");
+      return;
+    }
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        trimmedEmail,
+        password
+      );
       // Actualizamos el perfil del usuario con el nombre
       await updateProfile(userCredential.user, { displayName: trimmedName });
-      
-      // Guardamos el rol del usuario en Firestore
+
+      // Guardamos el rol y datos del usuario en Firestore
       const db = getFirestore(auth.app);
-      await setDoc(doc(db, "users", userCredential.user.uid), { 
-        role: userRole,
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        role: finalRole,
         name: trimmedName,
-        email: trimmedEmail
+        email: trimmedEmail,
       });
-      
-      router.replace("/login"); // Redirige a la pantalla de login después de registrar
+
+      router.replace("/login");
     } catch (err: any) {
       console.error(err);
       setError(getFriendlyError(err));
     }
   };
 
-  // Función para abrir el ActionSheet
-  const openActionSheet = () => {
-    actionSheetRef.current?.show(); // Abre el ActionSheet utilizando la referencia
-  };
+  // Pantalla de selección de tipo de usuario
+  if (!selectedType) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Seleccione el Tipo de Usuario</Text>
+        <TouchableOpacity
+          style={styles.selectorButton}
+          onPress={() => setSelectedType("cliente")}
+        >
+          <Text style={styles.selectorButtonText}>Registrarme como Cliente</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.selectorButton}
+          onPress={() => setSelectedType("admin")}
+        >
+          <Text style={styles.selectorButtonText}>
+            Registrarme como Caja o Cocinero
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-  // Manejar la selección del ActionSheet
-  const handleActionSheetPress = (index: number) => {
-    if (index !== userRoles.length) { // Evitar seleccionar "Cancelar"
-      setUserRole(userRoles[index].value);
-    }
-  };
+  // Flujo de administrador: solicitar clave y elección de rol
+  if (selectedType === "admin" && !adminRole) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Clave de Administrador</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <TextInput
+          style={styles.input}
+          placeholder="Clave de administrador"
+          placeholderTextColor="#888"
+          secureTextEntry
+          value={adminKey}
+          onChangeText={setAdminKey}
+        />
+        <Text style={styles.label}>Seleccione su rol</Text>
+        <View style={styles.adminButtonsContainer}>
+          <TouchableOpacity
+            style={styles.selectorButton}
+            onPress={() => {
+              if (adminKey.trim() !== "123456") {
+                setError("Clave de administrador incorrecta.");
+              } else {
+                setAdminRole("cocinero");
+                setError("");
+              }
+            }}
+          >
+            <Text style={styles.selectorButtonText}>Cocinero</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.selectorButton}
+            onPress={() => {
+              if (adminKey.trim() !== "123456") {
+                setError("Clave de administrador incorrecta.");
+              } else {
+                setAdminRole("caja");
+                setError("");
+              }
+            }}
+          >
+            <Text style={styles.selectorButtonText}>Caja</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            // Volver a la selección inicial
+            setSelectedType(null);
+            setAdminKey("");
+            setAdminRole(null);
+            setError("");
+          }}
+        >
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
+  // Formulario de registro final
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Registrarse</Text>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <Text style={styles.label}>
+        {selectedType === "cliente"
+          ? "Registrándote como Cliente"
+          : adminRole === "cocinero"
+          ? "Registrándote como Cocinero"
+          : "Registrándote como Caja"}
+      </Text>
       <TextInput
         style={styles.input}
         placeholder="Nombre"
@@ -110,28 +205,23 @@ export default function RegisterScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-
-      {/* Botón que abre el ActionSheet para seleccionar el rol */}
-      <Text style={styles.label}>Tipo de usuario</Text>
-      <TouchableOpacity style={styles.pickerContainer} onPress={openActionSheet}>
-        <Text style={styles.pickerText}>{userRoles.find((role) => role.value === userRole)?.label}</Text>
-      </TouchableOpacity>
-
-      {/* ActionSheet */}
-      <ActionSheet
-        ref={actionSheetRef} // Asignamos la referencia al ActionSheet
-        title="Selecciona un rol"
-        options={[...userRoles.map((item) => item.label), "Cancelar"]} // Opciones del ActionSheet
-        cancelButtonIndex={userRoles.length} // El último índice es el de "Cancelar"
-        onPress={handleActionSheetPress} // Callback cuando se presiona una opción
-      />
-
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
         <Text style={styles.buttonText}>Registrar</Text>
       </TouchableOpacity>
-
       <TouchableOpacity onPress={() => router.push("/login")}>
         <Text style={styles.loginText}>¿Ya tienes cuenta? Inicia sesión</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          // Permitir volver a la selección inicial en caso de querer cambiar
+          setSelectedType(null);
+          setAdminKey("");
+          setAdminRole(null);
+          setError("");
+        }}
+      >
+        <Text style={styles.backButtonText}>Cambiar Tipo de Usuario</Text>
       </TouchableOpacity>
     </View>
   );
@@ -149,11 +239,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 24,
     color: "#000",
+    textAlign: "center",
   },
   label: {
     fontSize: 16,
     marginBottom: 8,
     color: "#000",
+    textAlign: "center",
   },
   input: {
     width: "80%",
@@ -164,19 +256,17 @@ const styles = StyleSheet.create({
     color: "#000",
     borderColor: "#000",
   },
-  pickerContainer: {
+  selectorButton: {
     width: "80%",
-    borderWidth: 1,
-    borderColor: "#000",
-    borderRadius: 8,
-    marginBottom: 16,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "rgb(247, 194, 88)",
     padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 16,
   },
-  pickerText: {
+  selectorButtonText: {
+    color: "#fff",
     fontSize: 16,
-    color: "#000",
   },
   registerButton: {
     width: "80%",
@@ -184,7 +274,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
-    marginBottom: 12,
+    marginVertical: 12,
   },
   buttonText: {
     color: "#fff",
@@ -200,5 +290,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 16,
     textAlign: "center",
+  },
+  // Estilos para la pantalla de selección de administrador
+  adminButtonsContainer: {
+    flexDirection: "column", // Los botones se apilan verticalmente
+    width: "80%",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  backButton: {
+    marginTop: 12,
+  },
+  backButtonText: {
+    fontSize: 14,
+    color: "#007bff",
+    textDecorationLine: "underline",
   },
 });

@@ -33,10 +33,9 @@ export default function PedidoTrackingScreen() {
   // Puedes personalizar las labels y la lógica de “check”/“pendiente”
   const steps = [
     { id: "cart", label: "Pedido en carrito" },
-    { id: "pending", label: "El local recibió tu pedido" },
-    { id: "preparandose", label: "El local está preparando tu pedido" },
-    { id: "listo", label: "Tu pedido está listo" },
-    // Si quisieras un estado "pagado", lo agregarías aquí también.
+    { id: "pending", label: "El cocinero aceptó tu pedido" },
+    { id: "preparandose", label: "Tu pedido se está preparando" },
+    { id: "listo", label: "Tu pedido está listo!" },
   ];
 
   // Obtenemos el índice del estado actual en el array anterior

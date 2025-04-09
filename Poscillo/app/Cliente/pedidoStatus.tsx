@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  TouchableOpacity
+  TouchableOpacity,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
@@ -19,26 +20,103 @@ type OrderItem = {
   quantity: number;
 };
 
+// Cada paso se renderiza en una fila: círculo a la izquierda y etiqueta a la derecha
+const StepItem = ({
+  step,
+  index,
+  currentStepIndex,
+  totalSteps,
+}: {
+  step: { id: string; label: string };
+  index: number;
+  currentStepIndex: number;
+  totalSteps: number;
+}) => {
+  const isCompleted = index < currentStepIndex;
+  const isCurrent = index === currentStepIndex;
+
+  // Valor animado para el pulso en el paso actual
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+    if (isCurrent) {
+      animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.3,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+    } else {
+      scaleAnim.setValue(1);
+    }
+    return () => animation?.stop();
+  }, [isCurrent, scaleAnim]);
+
+  let iconContent: JSX.Element;
+  if (isCompleted) {
+    // Círculo verde con check blanco
+    iconContent = (
+      <View style={styles.completedCircle}>
+        <Text style={styles.checkIcon}>✓</Text>
+      </View>
+    );
+  } else if (isCurrent) {
+    // Círculo azul animado
+    iconContent = (
+      <Animated.Text
+        style={[
+          styles.currentIcon,
+          { transform: [{ scale: scaleAnim }] },
+        ]}
+      >
+        ●
+      </Animated.Text>
+    );
+  } else {
+    // Círculo vacío para pasos futuros
+    iconContent = <Text style={styles.futureIcon}>○</Text>;
+  }
+
+  return (
+    <View style={styles.stepRow}>
+      <View style={styles.iconColumn}>
+        {iconContent}
+        {index < totalSteps - 1 && <View style={styles.verticalLine} />}
+      </View>
+      <View style={styles.textColumn}>
+        <Text style={styles.stepLabel}>{step.label}</Text>
+      </View>
+    </View>
+  );
+};
+
 export default function PedidoTrackingScreen() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [orderExists, setOrderExists] = useState(false);
 
-  const [status, setStatus] = useState("");
-  const [items, setItems] = useState<OrderItem[]>([]);
-  const [createdAt, setCreatedAt] = useState<Date | null>(null);
-
-  // Para mostrar un timeline de los estados
-  // Puedes personalizar las labels y la lógica de “check”/“pendiente”
+  // Pasos según el flujo original
   const steps = [
     { id: "cart", label: "Pedido en carrito" },
     { id: "pending", label: "El cocinero aceptó tu pedido" },
     { id: "preparandose", label: "Tu pedido se está preparando" },
-    { id: "listo", label: "Tu pedido está listo!" },
+    { id: "listo", label: "¡Pedido listo!" },
   ];
 
-  // Obtenemos el índice del estado actual en el array anterior
+  const [status, setStatus] = useState("");
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [createdAt, setCreatedAt] = useState<Date | null>(null);
+
   const currentStepIndex = steps.findIndex((step) => step.id === status);
 
   useEffect(() => {
@@ -48,7 +126,6 @@ export default function PedidoTrackingScreen() {
       router.replace("/login");
       return;
     }
-
     const orderRef = doc(db, "orders", user.uid);
     const unsubscribe = onSnapshot(orderRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -56,34 +133,23 @@ export default function PedidoTrackingScreen() {
         const data = snapshot.data() as any;
         setStatus(data.status || "");
         setItems(data.items || []);
-        // Si createdAt es un Timestamp de Firestore, conviértelo a Date
         setCreatedAt(data.createdAt?.toDate?.() || null);
       } else {
-        // No existe doc => no hay pedido
         setOrderExists(false);
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [router]);
 
-  // Calculamos el total a pagar
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // Función para “pagar”
   const handlePay = async () => {
     const user = auth.currentUser;
-    if (!user) {
-      return;
-    }
-
-    // Aquí podrías integrar tu pasarela de pagos real.
-    // Al final, si tu flow es borrar el doc:
+    if (!user) return;
     try {
       await deleteDoc(doc(db, "orders", user.uid));
       Alert.alert("Pago exitoso", "El pedido ha sido pagado y completado.");
-      // Redirigir a donde gustes
       router.replace("/Cliente/cliente");
     } catch (error) {
       console.error("Error al borrar el pedido:", error);
@@ -98,7 +164,6 @@ export default function PedidoTrackingScreen() {
       </View>
     );
   }
-
   if (!orderExists) {
     return (
       <View style={styles.center}>
@@ -107,29 +172,6 @@ export default function PedidoTrackingScreen() {
     );
   }
 
-  // Renderizamos una “línea de estados” (timeline) en vertical u horizontal
-  // Para cada estado, vemos si es “pasado”, “actual” o “futuro”
-  const renderStep = (step: { id: string; label: string }, index: number) => {
-    const isCompleted = index < currentStepIndex; // si está antes del actual
-    const isCurrent = index === currentStepIndex; // si es el estado actual
-    return (
-      <View key={step.id} style={styles.stepContainer}>
-        <View style={styles.stepIcon}>
-          {/* Renderiza un icono distinto si está completado, actual o futuro */}
-          {isCompleted ? (
-            <Text style={styles.completedIcon}>✓</Text>
-          ) : isCurrent ? (
-            <Text style={styles.currentIcon}>•</Text>
-          ) : (
-            <Text style={styles.futureIcon}>○</Text>
-          )}
-        </View>
-        <Text style={styles.stepLabel}>{step.label}</Text>
-      </View>
-    );
-  };
-
-  // Render de cada producto
   const renderItem = ({ item }: { item: OrderItem }) => (
     <View style={styles.itemRow}>
       <Text style={{ flex: 1 }}>{item.title}</Text>
@@ -142,12 +184,18 @@ export default function PedidoTrackingScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Estado de tu Pedido</Text>
-
-      {/* Timeline de estados */}
+      {/* Timeline vertical en forma de filas */}
       <View style={styles.timelineContainer}>
-        {steps.map(renderStep)}
+        {steps.map((step, index) => (
+          <StepItem
+            key={step.id}
+            step={step}
+            index={index}
+            currentStepIndex={currentStepIndex}
+            totalSteps={steps.length}
+          />
+        ))}
       </View>
-
       <View style={styles.infoContainer}>
         <Text style={styles.infoText}>Estado actual: {status}</Text>
         {createdAt && (
@@ -156,8 +204,6 @@ export default function PedidoTrackingScreen() {
           </Text>
         )}
       </View>
-
-      {/* Lista de productos */}
       <Text style={styles.productsHeader}>Productos del pedido:</Text>
       {items.length === 0 ? (
         <Text style={{ textAlign: "center", marginVertical: 8 }}>
@@ -171,8 +217,6 @@ export default function PedidoTrackingScreen() {
           style={styles.list}
         />
       )}
-
-      {/* Si el estado es "listo", mostrar botón de pago */}
       {status === "listo" && (
         <View style={styles.payContainer}>
           <Text style={styles.totalText}>Total: ${total.toFixed(2)}</Text>
@@ -187,61 +231,117 @@ export default function PedidoTrackingScreen() {
 
 const styles = StyleSheet.create({
   center: {
-    flex: 1, justifyContent: "center", alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   container: {
     flex: 1,
     paddingTop: 60,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#f9f9f9",
   },
   header: {
-    fontSize: 22, fontWeight: "bold", textAlign: "center", marginBottom: 20,
-  },
-  timelineContainer: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 20,
   },
-  stepContainer: {
+  /* TIMELINE */
+  timelineContainer: {
+    flexDirection: "column",
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  stepRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  stepIcon: {
-    marginRight: 8,
+  iconColumn: {
+    width: 30,
+    alignItems: "center",
+    position: "relative",
   },
-  completedIcon: {
-    color: "green", fontWeight: "bold",
+  verticalLine: {
+    position: "absolute",
+    top: 30, // Partiendo del final del círculo (30px de alto)
+    left: 14, // Centrado: (30/2 - lineWidth/2)
+    width: 2,
+    height: 24,
+    backgroundColor: "#cccccc",
+  },
+  textColumn: {
+    marginLeft: 10,
+    flex: 1,
+    justifyContent: "center",
+  },
+  completedCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "green",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkIcon: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 18,
   },
   currentIcon: {
-    color: "blue", fontSize: 22, fontWeight: "bold",
+    fontSize: 30,
+    color: "#007bff",
+    fontWeight: "bold",
   },
   futureIcon: {
-    color: "#ccc", fontSize: 18,
+    fontSize: 26,
+    color: "#ccc",
   },
   stepLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#333",
+    textAlign: "left",
   },
+  /* INFO DEL PEDIDO */
   infoContainer: {
     marginBottom: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderRadius: 8,
   },
   infoText: {
     fontSize: 16,
     color: "#555",
-    marginVertical: 4,
+    marginVertical: 2,
   },
   productsHeader: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 6,
   },
-  list: { marginBottom: 20 },
+  list: {
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 8,
+  },
   itemRow: {
     flexDirection: "row",
     paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
+  /* BOTÓN DE PAGO */
   payContainer: {
     borderTopWidth: 1,
     borderTopColor: "#eee",
@@ -250,7 +350,7 @@ const styles = StyleSheet.create({
   totalText: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: "right",
   },
   payButton: {

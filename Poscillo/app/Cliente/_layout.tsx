@@ -32,21 +32,11 @@ export default function ClienteLayout() {
       />
 
       <Tabs.Screen
-        name="Carrito"
+        name="carrito"
         options={{
           title: "Carrito",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="timer-outline" color={color} size={size} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="pagar"
-        options={{
-          title: "Pagar",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cash-outline" color={color} size={size} />
+          <Ionicons name="cart-outline" size={size} color={color} />            
           ),
         }}
       />

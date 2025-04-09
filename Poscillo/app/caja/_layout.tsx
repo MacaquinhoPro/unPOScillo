@@ -31,11 +31,11 @@ export default function CajaLayout() {
         - Se mostrará con el título "Pagar" en la barra
       */}
       <Tabs.Screen
-        name="pagar"
+        name="cuentas"
         options={{
-          title: "Pagar",
+          title: "Cuentas",
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Ionicons name="cash-outline" color={color} size={size} />
+          <Ionicons name="receipt-outline" size={size} color={color} />          
           ),
         }}
       />

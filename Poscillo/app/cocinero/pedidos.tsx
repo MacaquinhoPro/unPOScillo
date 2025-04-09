@@ -1,7 +1,7 @@
 // app/cocinero.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from "react-native";
-import { db } from "../utils/firebaseconfig";
+import { db } from "./../../utils/firebaseconfig"; // Ajusta tu import de firebase
 import {
   collection,
   onSnapshot,

@@ -1,4 +1,3 @@
-// app/cliente/logout.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,13 +7,15 @@ export default function LogoutScreen() {
 
   const handleLogout = () => {
     // Aquí deberías implementar la lógica para cerrar la sesión del usuario.
-    console.log('Cerrando sesión del cliente...');
+    // Esto podría incluir limpiar tokens de autenticación, restablecer estados, etc.
+    console.log('Cerrando sesión...');
     Alert.alert('Cerrar Sesión', '¿Estás seguro de que deseas cerrar sesión?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Cerrar Sesión',
         onPress: () => {
-          router.push('/'); // Redirige a la pantalla de inicio de sesión principal.
+          // Después de cerrar sesión, podrías redirigir al usuario a la pantalla de inicio de sesión.
+          router.push('/login'); // Reemplaza '/login' con la ruta de tu pantalla de inicio de sesión.
         },
       },
     ]);

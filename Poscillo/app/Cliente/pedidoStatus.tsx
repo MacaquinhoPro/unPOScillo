@@ -20,7 +20,6 @@ type OrderItem = {
   quantity: number;
 };
 
-// Cada paso se renderiza en una fila: círculo a la izquierda y etiqueta a la derecha
 const StepItem = ({
   step,
   index,
@@ -35,8 +34,8 @@ const StepItem = ({
   const isCompleted = index < currentStepIndex;
   const isCurrent = index === currentStepIndex;
 
-  // Valor animado para el pulso en el paso actual
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     let animation: Animated.CompositeAnimation | null = null;
     if (isCurrent) {
@@ -63,14 +62,12 @@ const StepItem = ({
 
   let iconContent: JSX.Element;
   if (isCompleted) {
-    // Círculo verde con check blanco
     iconContent = (
       <View style={styles.completedCircle}>
         <Text style={styles.checkIcon}>✓</Text>
       </View>
     );
   } else if (isCurrent) {
-    // Círculo azul animado
     iconContent = (
       <Animated.Text
         style={[
@@ -82,7 +79,6 @@ const StepItem = ({
       </Animated.Text>
     );
   } else {
-    // Círculo vacío para pasos futuros
     iconContent = <Text style={styles.futureIcon}>○</Text>;
   }
 
@@ -104,18 +100,17 @@ export default function PedidoTrackingScreen() {
 
   const [loading, setLoading] = useState(true);
   const [orderExists, setOrderExists] = useState(false);
+  const [status, setStatus] = useState("");
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [createdAt, setCreatedAt] = useState<Date | null>(null);
+  const [tiempoTranscurrido, setTiempoTranscurrido] = useState<string>("");
 
-  // Pasos según el flujo original
   const steps = [
     { id: "cart", label: "Pedido en carrito" },
     { id: "pending", label: "El cocinero aceptó tu pedido" },
     { id: "preparandose", label: "Tu pedido se está preparando" },
     { id: "listo", label: "¡Pedido listo!" },
   ];
-
-  const [status, setStatus] = useState("");
-  const [items, setItems] = useState<OrderItem[]>([]);
-  const [createdAt, setCreatedAt] = useState<Date | null>(null);
 
   const currentStepIndex = steps.findIndex((step) => step.id === status);
 
@@ -126,6 +121,7 @@ export default function PedidoTrackingScreen() {
       router.replace("/login");
       return;
     }
+
     const orderRef = doc(db, "orders", user.uid);
     const unsubscribe = onSnapshot(orderRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -139,8 +135,34 @@ export default function PedidoTrackingScreen() {
       }
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    if (!createdAt) return;
+
+    const actualizar = () => {
+      const ahora = new Date();
+      const diff = ahora.getTime() - createdAt.getTime();
+
+      const segundos = Math.floor(diff / 1000);
+      const minutos = Math.floor(segundos / 60);
+      const horas = Math.floor(minutos / 60);
+
+      const seg = segundos % 60;
+      const min = minutos % 60;
+      const hr = horas;
+
+      const tiempo = `${hr > 0 ? `${hr}h ` : ""}${min}m ${seg}s`;
+      setTiempoTranscurrido(tiempo);
+    };
+
+    const intervalo = setInterval(actualizar, 1000);
+    actualizar();
+
+    return () => clearInterval(intervalo);
+  }, [createdAt]);
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -164,6 +186,7 @@ export default function PedidoTrackingScreen() {
       </View>
     );
   }
+
   if (!orderExists) {
     return (
       <View style={styles.center}>
@@ -184,7 +207,7 @@ export default function PedidoTrackingScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Estado de tu Pedido</Text>
-      {/* Timeline vertical en forma de filas */}
+
       <View style={styles.timelineContainer}>
         {steps.map((step, index) => (
           <StepItem
@@ -196,14 +219,21 @@ export default function PedidoTrackingScreen() {
           />
         ))}
       </View>
+
       <View style={styles.infoContainer}>
         <Text style={styles.infoText}>Estado actual: {status}</Text>
         {createdAt && (
-          <Text style={styles.infoText}>
-            Pedido creado: {createdAt.toLocaleString()}
-          </Text>
+          <>
+            <Text style={styles.infoText}>
+              Pedido creado: {createdAt.toLocaleString()}
+            </Text>
+            <Text style={styles.infoText}>
+              Tiempo transcurrido: {tiempoTranscurrido}
+            </Text>
+          </>
         )}
       </View>
+
       <Text style={styles.productsHeader}>Productos del pedido:</Text>
       {items.length === 0 ? (
         <Text style={{ textAlign: "center", marginVertical: 8 }}>
@@ -217,6 +247,7 @@ export default function PedidoTrackingScreen() {
           style={styles.list}
         />
       )}
+
       {status === "listo" && (
         <View style={styles.payContainer}>
           <Text style={styles.totalText}>Total: ${total.toFixed(2)}</Text>
@@ -230,6 +261,7 @@ export default function PedidoTrackingScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ... los estilos permanecen exactamente igual
   center: {
     flex: 1,
     justifyContent: "center",
@@ -247,7 +279,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
-  /* TIMELINE */
   timelineContainer: {
     flexDirection: "column",
     backgroundColor: "#fff",
@@ -273,8 +304,8 @@ const styles = StyleSheet.create({
   },
   verticalLine: {
     position: "absolute",
-    top: 30, // Partiendo del final del círculo (30px de alto)
-    left: 14, // Centrado: (30/2 - lineWidth/2)
+    top: 30,
+    left: 14,
     width: 2,
     height: 24,
     backgroundColor: "#cccccc",
@@ -311,7 +342,6 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "left",
   },
-  /* INFO DEL PEDIDO */
   infoContainer: {
     marginBottom: 16,
     paddingHorizontal: 10,
@@ -341,7 +371,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  /* BOTÓN DE PAGO */
   payContainer: {
     borderTopWidth: 1,
     borderTopColor: "#eee",

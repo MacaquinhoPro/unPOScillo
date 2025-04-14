@@ -1,19 +1,11 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from "react-native";
+import {View,  Text,  TextInput,  TouchableOpacity,  StyleSheet,  Platform,} from "react-native";
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../utils/firebaseconfig";
 import * as Haptics from "expo-haptics";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 
-// Función para generar mensajes de error amigables
 const getFriendlyError = (error: any): string => {
   switch (error.code) {
     case "auth/email-already-in-use":
@@ -29,21 +21,13 @@ const getFriendlyError = (error: any): string => {
 
 export default function RegisterScreen() {
   const router = useRouter();
-
-  // Estados de selección inicial
-  // selectedType: null = sin seleccionar, "cliente" o "admin"
   const [selectedType, setSelectedType] = useState<"cliente" | "admin" | null>(null);
-  // Para el flujo de administrador, almacenamos la clave y luego el rol admin elegido
   const [adminKey, setAdminKey] = useState("");
   const [adminRole, setAdminRole] = useState<"cocinero" | "caja" | null>(null);
-
-  // Estados del formulario de registro
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  // Función para manejar el registro
   const handleRegister = async () => {
     if (Platform.OS !== "macos" && Platform.OS !== "windows") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -56,7 +40,6 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Determinar el rol final según lo seleccionado
     const finalRole = selectedType === "cliente" ? "cliente" : adminRole;
     if (!finalRole) {
       setError("Error al determinar tu rol.");
@@ -69,10 +52,8 @@ export default function RegisterScreen() {
         trimmedEmail,
         password
       );
-      // Actualizamos el perfil del usuario con el nombre
       await updateProfile(userCredential.user, { displayName: trimmedName });
 
-      // Guardamos el rol y datos del usuario en Firestore
       const db = getFirestore(auth.app);
       await setDoc(doc(db, "users", userCredential.user.uid), {
         role: finalRole,
@@ -87,7 +68,6 @@ export default function RegisterScreen() {
     }
   };
 
-  // Pantalla de selección de tipo de usuario
   if (!selectedType) {
     return (
       <View style={styles.container}>
@@ -110,7 +90,6 @@ export default function RegisterScreen() {
     );
   }
 
-  // Flujo de administrador: solicitar clave y elección de rol
   if (selectedType === "admin" && !adminRole) {
     return (
       <View style={styles.container}>
@@ -169,7 +148,6 @@ export default function RegisterScreen() {
     );
   }
 
-  // Formulario de registro final
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Registrarse</Text>
@@ -214,7 +192,6 @@ export default function RegisterScreen() {
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
-          // Permitir volver a la selección inicial en caso de querer cambiar
           setSelectedType(null);
           setAdminKey("");
           setAdminRole(null);
@@ -291,9 +268,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
   },
-  // Estilos para la pantalla de selección de administrador
   adminButtonsContainer: {
-    flexDirection: "column", // Los botones se apilan verticalmente
+    flexDirection: "column", 
     width: "80%",
     alignItems: "center",
     marginBottom: 16,

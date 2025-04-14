@@ -18,28 +18,27 @@ export default function WelcomeScreen() {
 
           if (userDoc.exists()) {
             const { role } = userDoc.data();
-            console.log("User Role:", role); // Para depuración
+            console.log("User Role:", role); 
 
-            // Redirigir según el rol
             if (role === "cliente") {
-              router.replace("/Cliente/cliente"); // Asumiendo que tienes un _layout.tsx en /app/cliente
+              router.replace("/Cliente/cliente"); 
             } else if (role === "cocinero") {
-              router.replace("/cocinero");
+              router.replace("/cocinero/pedidos");
             } else if (role === "caja") {
-              router.replace("/caja/menu"); // Asumiendo que /app/caja tiene un _layout.tsx que dirige a /caja/menu
+              router.replace("/caja/menu"); 
             } else {
               console.warn("Rol de usuario desconocido:", role);
               router.replace("/login");
             }
-            return; // Importante para evitar que setLoading(false) se ejecute inmediatamente
+            return; 
           } else {
             console.warn("Documento de usuario no encontrado para:", uid);
           }
         }
-        router.replace("/login"); // Si no hay currentUser o el documento no existe, redirigir a login
+        router.replace("/login"); 
       } catch (error) {
         console.error("Error al obtener el rol del usuario:", error);
-        router.replace("/login"); // En caso de error, redirigir a login
+        router.replace("/login"); 
       } finally {
         setLoading(false);
       }
@@ -56,7 +55,6 @@ export default function WelcomeScreen() {
     );
   }
 
-  // Ya no es necesario mostrar el texto temporal aquí, ya que deberíamos haber sido redirigidos.
   return null;
 }
 

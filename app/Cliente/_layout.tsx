@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 export default function ClienteLayout() {
   return (
     <Tabs
+      initialRouteName="QRScanner"
       screenOptions={{
         headerShown: false,
       }}
@@ -19,8 +20,6 @@ export default function ClienteLayout() {
           ),
         }}
       />
-
-      {/* Nueva pestaña para ver el estado del pedido */}
       <Tabs.Screen
         name="pedidoStatus"
         options={{
@@ -36,7 +35,17 @@ export default function ClienteLayout() {
         options={{
           title: "Carrito",
           tabBarIcon: ({ color, size }) => (
-          <Ionicons name="cart-outline" size={size} color={color} />            
+            <Ionicons name="cart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="QRScanner"
+        options={{
+          title: "QR",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="qr-code-outline" color={color} size={size} />
           ),
         }}
       />

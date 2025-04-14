@@ -1,6 +1,6 @@
 // app/_layout.tsx
 import React, { useEffect, useState } from "react";
-import { View, TouchableOpacity, StyleSheet, Text, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../utils/firebaseconfig";
@@ -10,7 +10,6 @@ const publicRoutes = ["login", "register"];
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
-  const currentPath = segments.join("/");
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -20,16 +19,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user && !publicRoutes.includes(currentPath)) {
+      setLoading(false);
+      if (!user && !publicRoutes.includes(segments[0])) {
         setTimeout(() => {
           router.replace("/login");
-        }, 100);
+        }, 500);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
-  }, [mounted, router, currentPath]);
+  }, [mounted, segments, router]);
 
   if (!mounted || loading) {
     return (
@@ -44,9 +44,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 function AppLayout() {
   return (
     <Stack
-      initialRouteName="login"
       screenOptions={{
-        headerShown: false, // Esconde el header en Login y Register
+        headerShown: false,
       }}
     >
       <Stack.Screen name="login" />

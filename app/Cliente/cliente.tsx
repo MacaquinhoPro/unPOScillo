@@ -6,10 +6,7 @@ import MenuScreen from "../caja/menu";
 export default function ClienteScreen() {
   return (
     <View style={styles.container}>
-      {/* 
-        Se muestra el menú con el rol "cliente", 
-        sin opción de editar ni de eliminar platos 
-      */}
+
       <MenuScreen role="cliente" />
     </View>
   );

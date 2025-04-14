@@ -15,26 +15,22 @@ export default function Index() {
 
   useEffect(() => {
     if (!isMounted) return;
-
-    // Verifica si el usuario está autenticado
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setLoading(false); // Finalizamos el estado de carga
+      setLoading(false);
 
       if (user) {
-        // Si el usuario está autenticado, redirige a la pantalla principal
         router.replace("/");
       } else {
-        // Si el usuario no está autenticado, redirige a la pantalla de Login
         router.replace("/login");
       }
     });
 
-    return () => unsubscribe(); // Limpia la suscripción cuando el componente se desmonte
+    return () => unsubscribe(); 
   }, [isMounted, router]);
 
   if (loading) {
-    return null; // O puedes mostrar un componente de carga si prefieres
+    return null; 
   }
 
-  return null; // No renderiza nada aquí, solo maneja la redirección
+  return null; 
 }

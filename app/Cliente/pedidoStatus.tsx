@@ -1,17 +1,9 @@
+// app/Cliente/pedidoStatus.tsx
 import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  TouchableOpacity,
-  Animated,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Alert, FlatList, TouchableOpacity, Animated,} from "react-native";
 import { useRouter } from "expo-router";
 import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
-import { auth, db } from "./../../utils/firebaseconfig";
+import { auth, db } from "../../utils/firebaseconfig";
 
 type OrderItem = {
   id: string;
@@ -33,7 +25,6 @@ const StepItem = ({
 }) => {
   const isCompleted = index < currentStepIndex;
   const isCurrent = index === currentStepIndex;
-
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -70,10 +61,7 @@ const StepItem = ({
   } else if (isCurrent) {
     iconContent = (
       <Animated.Text
-        style={[
-          styles.currentIcon,
-          { transform: [{ scale: scaleAnim }] },
-        ]}
+        style={[styles.currentIcon, { transform: [{ scale: scaleAnim }] }]}
       >
         ●
       </Animated.Text>
@@ -97,12 +85,12 @@ const StepItem = ({
 
 export default function PedidoTrackingScreen() {
   const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [orderExists, setOrderExists] = useState(false);
   const [status, setStatus] = useState("");
   const [items, setItems] = useState<OrderItem[]>([]);
   const [createdAt, setCreatedAt] = useState<Date | null>(null);
+  const [tableId, setTableId] = useState<string>("sin asignar");
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState<string>("");
 
   const steps = [
@@ -121,7 +109,6 @@ export default function PedidoTrackingScreen() {
       router.replace("/login");
       return;
     }
-
     const orderRef = doc(db, "orders", user.uid);
     const unsubscribe = onSnapshot(orderRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -130,6 +117,7 @@ export default function PedidoTrackingScreen() {
         setStatus(data.status || "");
         setItems(data.items || []);
         setCreatedAt(data.createdAt?.toDate?.() || null);
+        setTableId(data.tableId || "sin asignar");
       } else {
         setOrderExists(false);
       }
@@ -164,7 +152,10 @@ export default function PedidoTrackingScreen() {
     return () => clearInterval(intervalo);
   }, [createdAt]);
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
 
   const handlePay = async () => {
     const user = auth.currentUser;
@@ -206,6 +197,11 @@ export default function PedidoTrackingScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Sección para mostrar la mesa actual */}
+      <View style={styles.tableContainer}>
+        <Text style={styles.tableText}>Mesa: {tableId}</Text>
+      </View>
+
       <Text style={styles.header}>Estado de tu Pedido</Text>
 
       <View style={styles.timelineContainer}>
@@ -261,7 +257,6 @@ export default function PedidoTrackingScreen() {
 }
 
 const styles = StyleSheet.create({
-  // ... los estilos permanecen exactamente igual
   center: {
     flex: 1,
     justifyContent: "center",
@@ -272,6 +267,14 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     backgroundColor: "#f9f9f9",
+  },
+  tableContainer: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  tableText: {
+    fontSize: 20,
+    fontWeight: "bold",
   },
   header: {
     fontSize: 22,

@@ -28,19 +28,17 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    // Solo realiza el haptic feedback si no es una plataforma de escritorio (Mac o Windows)
     if (Platform.OS !== "macos" && Platform.OS !== "windows") {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
-    setError(""); // Limpiar error previo
+    setError("");
     if (!email.trim() || !password) {
       setError("Por favor completa todos los campos.");
       return;
     }
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      // Redirige a la pantalla de bienvenida después de iniciar sesión
       router.replace("/welcome");
     } catch (err: any) {
       console.error(err);
@@ -69,13 +67,10 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-
-      {/* Botón de "Entrar" con fondo de color morado claro */}
       <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.buttonText}>Entrar</Text>
       </TouchableOpacity>
 
-      {/* El texto de "No tienes cuenta? Regístrate" siempre visible */}
       <TouchableOpacity onPress={() => router.push("/register")}>
         <Text style={styles.registerText}>¿No tienes cuenta? Regístrate</Text>
       </TouchableOpacity>
@@ -107,14 +102,13 @@ const styles = StyleSheet.create({
     },
     loginButton: {
       width: "80%",
-      backgroundColor: "rgb(247, 194, 88)", // Color actualizado
-      padding: 12,
+      backgroundColor: "rgb(247, 194, 88)", 
       borderRadius: 8,
       alignItems: "center",
       marginBottom: 12,
     },
     buttonText: {
-      color: "#fff", // Texto blanco dentro del botón
+      color: "#fff", 
       fontSize: 16,
     },
     registerText: {

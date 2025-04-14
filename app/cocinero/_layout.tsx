@@ -7,10 +7,9 @@ export default function CocineroLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // oculta la barra superior nativa
+        headerShown: false, 
       }}
     >
-      {/* Pantalla "pedidos" (donde el cocinero ve las órdenes) */}
       <Tabs.Screen
         name="pedidos"
         options={{
@@ -20,8 +19,6 @@ export default function CocineroLayout() {
           ),
         }}
       />
-
-      {/* Pantalla de "logout" para cerrar sesión */}
       <Tabs.Screen
         name="logout"
         options={{

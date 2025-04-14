@@ -1,20 +1,16 @@
 // app/caja/_layout.tsx
 import React from "react";
 import { Tabs } from "expo-router";
-import { Ionicons } from '@expo/vector-icons'; // Asegúrate de tener esta dependencia instalada
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CajaLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // oculta el header nativo
+        headerShown: false, 
       }}
     >
-      {/*
-        Tab de "menu".
-        - routeName: "menu"
-        - Se mostrará con el título "Menú" en la barra
-      */}
+
       <Tabs.Screen
         name="menu"
         options={{
@@ -25,11 +21,6 @@ export default function CajaLayout() {
         }}
       />
 
-      {/*
-        Tab de "pagar".
-        - routeName: "pagar"
-        - Se mostrará con el título "Pagar" en la barra
-      */}
       <Tabs.Screen
         name="cuentas"
         options={{
@@ -40,11 +31,6 @@ export default function CajaLayout() {
         }}
       />
 
-      {/*
-        Tab de "cerrar sesión".
-        - routeName: "logout"
-        - Se mostrará con el título "Cerrar Sesión" en la barra
-      */}
       <Tabs.Screen
         name="logout"
         options={{

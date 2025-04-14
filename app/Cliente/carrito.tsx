@@ -1,23 +1,22 @@
 // app/Cliente/Carrito.tsx
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {View,Text,FlatList,TouchableOpacity,StyleSheet,Alert,} from "react-native";
 import { db, auth } from "../../utils/firebaseconfig";
-import { collection, doc, onSnapshot, updateDoc, arrayRemove, arrayUnion, getDoc, query, where, setDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, updateDoc, arrayRemove, arrayUnion, query, where, getDoc, setDoc} from "firebase/firestore";
 import { useRouter } from "expo-router";
 
-// Tipo local para los items del carrito
 type CartItem = {
   id: string;
   title: string;
   price: number;
   quantity: number;
-  // Agrega más campos si los tienes en tu order
 };
 
 export default function CarritoScreen() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orderDocId, setOrderDocId] = useState<string | null>(null);
+  const [tableId, setTableId] = useState<string>("sin asignar");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,24 +25,26 @@ export default function CarritoScreen() {
       setLoading(false);
       return;
     }
-    // Escuchamos la orden que esté en estado "cart"
+
     const ordersRef = collection(db, "orders");
-    const q = query(ordersRef, where("userId", "==", user.uid), where("status", "==", "cart"));
+    const q = query(
+      ordersRef,
+      where("userId", "==", user.uid),
+      where("status", "==", "cart")
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
-        // Tomamos el primer doc que coincida
         const docSnap = snapshot.docs[0];
         setOrderDocId(docSnap.id);
         const data = docSnap.data() as any;
-        if (data.items) {
-          setCartItems(data.items);
-        } else {
-          setCartItems([]);
-        }
+
+        setCartItems(data.items || []);
+        setTableId(data.tableId || "sin asignar");
       } else {
         setOrderDocId(null);
         setCartItems([]);
+        setTableId("sin asignar");
       }
       setLoading(false);
     });
@@ -51,25 +52,17 @@ export default function CarritoScreen() {
     return () => unsubscribe();
   }, []);
 
-  // Actualiza la cantidad de un ítem en el array (incremento o decremento)
   const updateItemQuantity = async (item: CartItem, newQuantity: number) => {
     if (!orderDocId) return;
     if (newQuantity < 1) {
-      // Si llega a 0, mejor lo eliminamos completamente
       removeItem(item);
       return;
     }
     try {
-      // Para actualizar la cantidad, tenemos que:
-      // 1) quitar el ítem actual del array
-      // 2) añadir un ítem con la nueva cantidad
       const orderRef = doc(db, "orders", orderDocId);
-
-      // Quitar ítem anterior
       await updateDoc(orderRef, {
         items: arrayRemove(item),
       });
-      // Añadir ítem con la cantidad modificada
       const updatedItem = { ...item, quantity: newQuantity };
       await updateDoc(orderRef, {
         items: arrayUnion(updatedItem),
@@ -80,7 +73,6 @@ export default function CarritoScreen() {
     }
   };
 
-  // Eliminar un ítem del array
   const removeItem = async (item: CartItem) => {
     if (!orderDocId) return;
     try {
@@ -94,28 +86,41 @@ export default function CarritoScreen() {
     }
   };
 
-  // Botón “Mandar a cocina”: cambia el estado "cart" a "pending"
   const handleSendToKitchen = async () => {
     if (!orderDocId) {
       Alert.alert("Carrito vacío", "No hay nada que mandar a la cocina.");
       return;
     }
+  
+    if (tableId === "Sin Asignar") {
+      Alert.alert(
+        "Mesa no asignada",
+        "Primero debes escanear el QR para obtener tu número de mesa.",
+        [
+          { text: "OK", onPress: () => router.push('/Cliente/QRScanner') }
+        ]
+      );
+      return;
+    }
+  
     try {
       const orderRef = doc(db, "orders", orderDocId);
       await updateDoc(orderRef, { status: "pending" });
       Alert.alert("Pedido enviado", "Tu pedido ha sido enviado a la cocina.");
-      // Podrías navegar a /Cliente/pedidoStatus o donde gustes
       router.replace("/Cliente/pedidoStatus");
     } catch (error) {
       console.error("Error al cambiar estado a pending:", error);
       Alert.alert("Error", "No se pudo enviar el pedido a la cocina.");
     }
   };
+  
 
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>
       <Text style={styles.itemTitle}>{item.title}</Text>
-      <Text style={styles.price}>${(item.price * item.quantity).toFixed(2)}</Text>
+      <Text style={styles.price}>
+        ${(item.price * item.quantity).toFixed(2)}
+      </Text>
       <View style={styles.qtyContainer}>
         <TouchableOpacity
           style={styles.qtyButton}
@@ -145,10 +150,17 @@ export default function CarritoScreen() {
     );
   }
 
-  const total = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const total = cartItems.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0
+  );
 
   return (
     <View style={styles.container}>
+      <View style={styles.tableContainer}>
+        <Text style={styles.tableText}>Mesa: {tableId}</Text>
+      </View>
+
       <Text style={styles.header}>Tu Carrito</Text>
 
       {cartItems.length === 0 ? (
@@ -166,8 +178,13 @@ export default function CarritoScreen() {
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
 
-          <TouchableOpacity style={styles.sendButton} onPress={handleSendToKitchen}>
-            <Text style={styles.sendButtonText}>¡Listo! Mandar a cocina</Text>
+          <TouchableOpacity
+            style={styles.sendButton}
+            onPress={handleSendToKitchen}
+          >
+            <Text style={styles.sendButtonText}>
+              ¡Listo! Mandar a cocina
+            </Text>
           </TouchableOpacity>
         </>
       )}
@@ -176,9 +193,25 @@ export default function CarritoScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#fff", paddingTop: 60 },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#fff",
+    paddingTop: 60,
+  },
+  tableContainer: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  tableText: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
   header: {
-    fontSize: 24, fontWeight: "bold", textAlign: "center", marginBottom: 20,
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 20,
   },
   itemRow: {
     flexDirection: "row",
@@ -204,7 +237,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   qtyButtonText: { fontSize: 16, fontWeight: "bold" },
-  quantityText: { fontSize: 16, fontWeight: "bold", minWidth: 20, textAlign: "center" },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    minWidth: 20,
+    textAlign: "center",
+  },
   removeText: { color: "red", marginLeft: 4 },
   emptyText: {
     textAlign: "center",

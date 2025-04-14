@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Poscillo",
-    "slug": "Poscillo",
+    "name": " unposcillo",
+    "slug": "unposcillo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -48,8 +48,7 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
-      ],
-      "expo-barcode-scanner"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
